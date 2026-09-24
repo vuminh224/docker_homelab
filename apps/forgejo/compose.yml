@@ -1,0 +1,25 @@
+services:
+  server:
+    image: codeberg.org/forgejo/forgejo:16
+    container_name: forgejo
+    restart: always
+
+    environment:
+      - USER_UID=${PUID}
+      - USER_GID=${PGID}
+
+    volumes:
+      - ${CONFIGS_DIR}/forgejo:/data
+      - ${DATA_STORAGE}/data_storage_forgejo:/git
+      - /etc/localtime:/etc/localtime:ro
+
+    ports:
+      #- 3000:3000
+      - 2222:22
+
+    networks:
+      - docker-network
+      
+networks:
+  docker-network:
+    external: true

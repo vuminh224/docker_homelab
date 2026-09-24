@@ -1,0 +1,45 @@
+services:
+  navidrome:
+    image: deluan/navidrome:latest
+    container_name: navidrome
+    restart: unless-stopped
+
+    environment:
+      ND_MUSICFOLDER: /music
+      ND_DATAFOLDER: /data
+      ND_LASTFM_SECRET: ${ND_LASTFM_SECRET}
+      ND_LASTFM_APIKEY: ${ND_LASTFM_APIKEY}
+      ND_LASTFM_SCROBBLEFIRSTARTISTONLY: "true"
+      #ND_BINDADDR: 0.0.0.0
+      ND_BASEURL: ${ND_BASEURL}
+      ND_ENABLESHARING: true
+      ND_AUTOIMPORTPLAYLISTS: true
+      ND_ENABLETRANSCODING: true
+      ND_ENABLETRANSCODINGCONFIG: true
+      ND_BACKUP_PATH: /backup
+      ND_BACKUP_SCHEDULE: 0 0 * * *
+      ND_BACKUP_COUNT: 7
+      ND_PLUGINS_AUTORELOAD: true
+      ND_AGENTS: audiomuseai,lastfm,deezer
+      ND_DEVARTISTINFOTIMETOLIVE: 1s
+      ND_TAGS_COMPOSER_IGNORE: "true"
+      ND_TAGS_LYRICIST_IGNORE: "true"
+      ND_TAGS_PRODUCER_IGNORE: "true"
+      ND_SCANSCHEDULE: 0
+
+    networks:
+      - docker-network
+
+    volumes:
+      - ${CONFIGS_DIR}/navidrome/backup:/backup
+      - ${CONFIGS_DIR}/navidrome/data:/data
+      - ${MEDIA_DIR}/Music/Hard Dance:/music:ro
+      - /mnt/usb/[Audio-4U] J-CORE 14 (flac):/music2:ro
+      - ${MEDIA_DIR}/Music/Other:/music3:ro
+      - ${MEDIA_DIR}/Music/SpaceSpeakers:/music4:ro
+      - ${MEDIA_DIR}/Music/Classical:/music5:ro
+    user: ${PUID}:${PGID}
+    
+networks:
+  docker-network:
+    external: true

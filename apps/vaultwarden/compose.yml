@@ -1,0 +1,46 @@
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+
+    #ports:
+    #  - 30044:80
+
+    environment:
+      DOMAIN: ${DOMAIN} # Your domain here!
+      #ADMIN_TOKEN: ${ADMIN_TOKEN}
+
+    volumes:
+      - ${CONFIGS_DIR}/vaultwarden:/data
+
+    networks:
+      - docker-network
+      - vault-internal
+
+  backvault:
+    image: mvflc/backvault:latest
+    container_name: backvault
+    restart: unless-stopped
+
+    environment:
+      BW_SERVER: ${DOMAIN}
+      BACKUP_ENCRYPTION_MODE: raw # Use 'bitwarden' for the default format
+      BACKUP_INTERVAL_HOURS: 12
+      NODE_TLS_REJECT_UNAUTHORIZED: 0
+      TZ: ${TZ}
+
+    volumes:
+      - ${CONFIGS_DIR}/backvault/backups:/app/backups
+      - ${CONFIGS_DIR}/backvault/db:/app/db
+
+    #ports:
+    #  - 30045:8080
+
+    networks:
+      - vault-internal
+
+networks:
+  vault-internal: null
+  docker-network:
+    external: true

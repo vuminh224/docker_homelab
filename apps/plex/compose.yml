@@ -1,0 +1,27 @@
+services:
+  plex:
+    image: lscr.io/linuxserver/plex:latest
+    container_name: plex
+    restart: unless-stopped
+
+    networks:
+      - docker-network
+
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - VERSION=docker
+
+    volumes:
+      - ${CONFIGS_DIR}/plex/configs:/config
+      - ${CONFIGS_DIR}/plex/logs:/logs
+      - ${CONFIGS_DIR}/plex/transcode:/transcode
+      - ${MEDIA_DIR}:/media
+
+    devices:
+      - /dev/dri:/dev/dri
+
+networks:
+  docker-network:
+    external: true

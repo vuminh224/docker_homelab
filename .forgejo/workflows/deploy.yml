@@ -1,0 +1,376 @@
+name: Deploy Homelab Stacks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/**"
+      - "secrets/**"
+      - "global.env"
+
+jobs:
+  deploy:
+    runs-on: publish
+
+    container:
+      image: node:current-bookworm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          apt-get update
+          apt-get install -y \
+            curl \
+            jq \
+            age \
+            ca-certificates
+
+          SOPS_VERSION="3.10.2"
+
+          curl -fsSL \
+            -o /usr/local/bin/sops \
+            "https://github.com/getsops/sops/releases/download/v${SOPS_VERSION}/sops-v${SOPS_VERSION}.linux.amd64"
+
+          chmod +x /usr/local/bin/sops
+
+          echo "Installed tools:"
+          git --version
+          curl --version | head -n 1
+          jq --version
+          age --version
+          sops --version
+
+      - name: Detect changed stacks
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          changed_files="$(git diff --name-only HEAD^ HEAD)"
+
+          echo "Changed files:"
+          echo "$changed_files"
+
+          if echo "$changed_files" | grep -qx "global.env"; then
+            echo "global_changed=true" >> "$GITHUB_OUTPUT"
+            echo "stacks=" >> "$GITHUB_OUTPUT"
+
+            echo "global.env changed."
+            echo "All stacks will be deployed."
+
+            exit 0
+          fi
+
+          echo "global_changed=false" >> "$GITHUB_OUTPUT"
+
+          app_stacks="$(
+            echo "$changed_files" |
+            awk -F/ '
+              $1 == "apps" && $2 != "" {
+                print $2
+              }
+            '
+          )"
+
+          secret_stacks="$(
+            echo "$changed_files" |
+            awk -F/ '
+              $1 == "secrets" && $2 ~ /\.env\.sops$/ {
+                name=$2
+                sub(/\.env\.sops$/, "", name)
+                print name
+              }
+            '
+          )"
+
+          stacks="$(
+            printf '%s\n%s\n' "$app_stacks" "$secret_stacks" |
+            sed '/^$/d' |
+            sort -u
+          )"
+
+          if [ -z "$stacks" ]; then
+            echo "No stacks changed."
+            echo "stacks=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          echo "Stacks to deploy:"
+          echo "$stacks"
+
+          stacks_csv="$(echo "$stacks" | paste -sd, -)"
+
+          echo "stacks=$stacks_csv" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy stacks
+        if: steps.changes.outputs.global_changed == 'true' || steps.changes.outputs.stacks != ''
+        shell: bash
+        env:
+          PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+          PORTAINER_API_KEY: ${{ secrets.PORTAINER_API_KEY }}
+          SOPS_AGE_KEY: ${{ secrets.SOPS_AGE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ "${{ steps.changes.outputs.global_changed }}" = "true" ]; then
+
+            stacks="$(
+              find apps \
+                -mindepth 1 \
+                -maxdepth 1 \
+                -type d \
+                -printf '%f\n' |
+              sort
+            )"
+
+          else
+
+            stacks="${{ steps.changes.outputs.stacks }}"
+            stacks="${stacks//,/ }"
+
+          fi
+
+          if [ -z "$stacks" ]; then
+            echo "Nothing to deploy."
+            exit 0
+          fi
+
+          echo "Stacks:"
+          printf ' - %s\n' $stacks
+
+          stacks_json=$(curl \
+            --fail \
+            --silent \
+            --show-error \
+            --insecure \
+            --header "X-API-Key: ${PORTAINER_API_KEY}" \
+            "${PORTAINER_URL}/api/stacks")
+
+          for stack in $stacks; do
+
+            echo
+            echo "=================================================="
+            echo "Deploying: ${stack}"
+            echo "=================================================="
+
+            stack_info="$(
+              echo "$stacks_json" |
+              jq -c --arg name "$stack" '
+                .[] |
+                select(.Name == $name)
+              ' |
+              head -n 1
+            )"
+
+            if [ -z "$stack_info" ]; then
+              echo "WARNING: Portainer stack '${stack}' does not exist."
+              echo "Skipping."
+              continue
+            fi
+
+            stack_id="$(echo "$stack_info" | jq -r '.Id')"
+            endpoint_id="$(echo "$stack_info" | jq -r '.EndpointId')"
+
+            echo "Stack ID: ${stack_id}"
+            echo "Endpoint ID: ${endpoint_id}"
+
+            tmp_dir="$(mktemp -d)"
+
+            global_env="${tmp_dir}/global.env"
+            secret_env="${tmp_dir}/secret.env"
+            merged_env="${tmp_dir}/merged.env"
+            env_json="${tmp_dir}/env.json"
+            payload="${tmp_dir}/payload.json"
+
+            trap 'rm -rf "$tmp_dir"' EXIT
+
+            cp global.env "$global_env"
+
+            if [ -f "secrets/${stack}.env.sops" ]; then
+
+              echo "Decrypting secrets/${stack}.env.sops"
+
+              sops \
+                --decrypt \
+                "secrets/${stack}.env.sops" \
+                > "$secret_env"
+
+              chmod 600 "$secret_env"
+
+            else
+
+              echo "No SOPS file for ${stack}."
+              : > "$secret_env"
+
+            fi
+
+            cat "$global_env" "$secret_env" > "$merged_env"
+
+            node -e '
+              const fs = require("fs");
+
+              const file = process.argv[1];
+              const content = fs.readFileSync(file, "utf8");
+
+              const dq = String.fromCharCode(34);
+              const sq = String.fromCharCode(39);
+
+              const variables = new Map();
+
+              for (const raw of content.split(/\r?\n/)) {
+                let line = raw.trim();
+
+                if (!line || line.startsWith("#")) {
+                  continue;
+                }
+
+                if (line.startsWith("export ")) {
+                  line = line.slice(7);
+                }
+
+                const separator = line.indexOf("=");
+
+                if (separator <= 0) {
+                  continue;
+                }
+
+                const name = line.slice(0, separator).trim();
+                let value = line.slice(separator + 1);
+
+                if (
+                  value.length >= 2 &&
+                  (
+                    (value.startsWith(dq) && value.endsWith(dq)) ||
+                    (value.startsWith(sq) && value.endsWith(sq))
+                  )
+                ) {
+                  value = value.slice(1, -1);
+                }
+
+                variables.set(name, value);
+              }
+
+              const result = [...variables.entries()].map(([name, value]) => ({
+                name,
+                value
+              }));
+
+              process.stdout.write(JSON.stringify(result));
+            ' "$merged_env" > "$env_json"
+
+            echo "Environment variables:"
+            jq -r ".[].name" "$env_json" | sed "s/^/ - /"
+
+            jq -n --slurpfile env "$env_json" \
+              '{
+                Env: $env[0],
+                Prune: false,
+                RepullImageAndRedeploy: false
+              }' > "$payload"
+
+            echo "Payload byte count: $(wc -c < "$payload")"
+            echo "Payload (validated JSON):"
+            if jq . "$payload"; then
+              :
+            else
+              echo "WARNING: payload is not valid JSON. Raw bytes:"
+              od -c "$payload" | head -n 20
+            fi
+
+            echo "Triggering Portainer redeploy..."
+
+            response_file="${tmp_dir}/response.json"
+            headers_file="${tmp_dir}/response_headers.txt"
+
+            http_code="$(
+              curl \
+                --silent \
+                --show-error \
+                --output "$response_file" \
+                --dump-header "$headers_file" \
+                --write-out "%{http_code}" \
+                --request PUT \
+                --header "X-API-Key: ${PORTAINER_API_KEY}" \
+                --header "Content-Type: application/json" \
+                --data @"$payload" \
+                --insecure \
+                "${PORTAINER_URL}/api/stacks/${stack_id}/git/redeploy?endpointId=${endpoint_id}"
+            )"
+
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+
+              echo
+              echo "ERROR: Portainer API returned HTTP ${http_code}"
+              echo
+              echo "Response headers:"
+              cat "$headers_file" || echo "(no headers captured)"
+              echo
+              echo "Response body byte count: $(wc -c < "$response_file")"
+              echo "Response body:"
+              if [ -s "$response_file" ]; then
+                if jq . "$response_file" 2>/dev/null; then
+                  :
+                else
+                  echo "(not valid JSON, raw bytes below)"
+                  od -c "$response_file" | head -n 20
+                fi
+              else
+                echo "(file is genuinely 0 bytes)"
+              fi
+
+              exit 1
+            fi
+
+            echo "Portainer accepted redeploy."
+
+            echo "Checking deployment status..."
+
+            stack_after="$(
+              curl \
+                --fail \
+                --silent \
+                --show-error \
+                --insecure \
+                --header "X-API-Key: ${PORTAINER_API_KEY}" \
+                "${PORTAINER_URL}/api/stacks/${stack_id}"
+            )"
+
+            status="$(echo "$stack_after" | jq -r '.Status // "unknown"')"
+
+            echo "Portainer stack status: ${status}"
+
+            deployment_message="$(
+              echo "$stack_after" |
+              jq -r '
+                try (
+                  if (.DeploymentStatus | type) == "object" then
+                    .DeploymentStatus.Message // empty
+                  elif (.DeploymentStatus | type) == "array" then
+                    (.DeploymentStatus | last | .Message?) // empty
+                  else
+                    empty
+                  end
+                ) catch empty
+              ' 2>/dev/null || true
+            )"
+
+            if [ -n "$deployment_message" ]; then
+              echo "Deployment message:"
+              echo "$deployment_message"
+            fi
+
+            echo "Successfully deployed: ${stack}"
+
+            rm -rf "$tmp_dir"
+            trap - EXIT
+
+          done

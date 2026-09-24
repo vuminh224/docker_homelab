@@ -1,0 +1,108 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: audiomuse-postgres
+    restart: unless-stopped
+
+    user: ${PUID}:${PGID}
+    
+    ports:
+      - 5432:5432
+    
+    networks:
+      - docker-network
+      - audiomuse-internal
+    
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    
+    volumes:
+      - ${CONFIGS_DIR}/audiomuse/postgres-data:/var/lib/postgresql/data
+    
+    mem_limit: 2G
+    
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER}
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  audiomuse-ai-flask-app:
+    image: ghcr.io/neptunehub/audiomuse-ai:latest
+    container_name: audiomuse-ai-flask-app
+    restart: unless-stopped
+
+    ports:
+      - ${AUDIOMUSE_PORT:-30046}:8000
+
+    environment:
+      SERVICE_TYPE: flask
+      MEDIASERVER_TYPE: navidrome
+      # Configuration Navidrome
+      NAVIDROME_URL: ${NAVIDROME_URL}
+      NAVIDROME_USER: ${NAVIDROME_USER}
+      NAVIDROME_PASSWORD: ${NAVIDROME_PASSWORD}
+      # Configuration base de données
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      # Configuration IA (désactivée)
+      AI_MODEL_PROVIDER: ${AI_MODEL_PROVIDER}
+      # CLAP (peut être désactivé pour économiser des ressources)
+      CLAP_ENABLED: ${CLAP_ENABLED:-true}
+      # Active le cluster de CPU
+      USE_GPU_CLUSTERING: "true"
+      TZ: ${TZ}
+
+    volumes:
+      - ${CONFIGS_DIR}/audiomuse/app-data:/app/data
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    networks:
+      - docker-network
+      - audiomuse-internal
+
+    mem_limit: 2G
+
+  audiomuse-ai-worker:
+    image: ghcr.io/neptunehub/audiomuse-ai:latest
+    container_name: audiomuse-ai-worker
+    restart: unless-stopped
+
+    user: ${PUID}:${PGID}
+
+    environment:
+      SERVICE_TYPE: worker
+      TZ: ${TZ}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+
+    volumes:
+      - ${CONFIGS_DIR}/audiomuse/temp-audio-worker:/app/temp_audio
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    mem_limit: 4G
+
+    networks:
+      - docker-network
+      - audiomuse-internal
+
+networks:
+  audiomuse-internal: null
+  docker-network:
+    external: true

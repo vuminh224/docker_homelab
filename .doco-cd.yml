@@ -1,0 +1,46 @@
+apps:
+  - name: adguard
+    working_dir: apps/adguard
+    compose_files:
+      - compose.yml
+    env_files:
+      - ../../global.env
+  
+  - name: arr
+    working_dir: apps/arr
+    compose_files:
+      - compose.yml
+    env_files:
+      - ../../global.env
+      - ../../secrets/arr.env.sops
+
+  - name: audiomuse
+    working_dir: apps/audiomuse
+    compose_files:
+      - compose.yml
+    env_files:
+      - ../../global.env
+      - ../../secrets/audiomuse.env.sops
+
+  - name: forgejo
+    working_dir: apps/forgejo
+    compose_files:
+      - compose.yml
+    env_files:
+      - ../../global.env
+      - ../../secrets/audiomuse.env.sops
+
+  - name: jellyfin
+    working_dir: apps/jellyfin
+    compose_files:
+      - compose.yml
+    env_files:
+      - ../../global.env
+
+  - name: searxng
+    working_dir: apps/searxng
+    compose_files:
+      - compose.yml
+    env_files:
+      - ../../global.env
+      - ../../secrets/searxng.env.sops

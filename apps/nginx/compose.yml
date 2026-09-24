@@ -1,0 +1,21 @@
+services:
+  app:
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    container_name: npm
+
+    ports:
+      - 80:80
+      - 8181:81
+      - 443:443
+
+    volumes:
+      - ${CONFIGS_DIR}/npm/data:/data
+      - ${CONFIGS_DIR}/npm/letsencrypt:/etc/letsencrypt
+
+    networks:
+      - docker-network
+      
+networks:
+  docker-network:
+    external: true

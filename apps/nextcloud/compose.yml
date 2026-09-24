@@ -1,0 +1,84 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: nextcloud-postgres
+    restart: unless-stopped
+
+    user: ${PUID}:${PGID}
+
+    environment:
+      - TZ=${TZ}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+    volumes:
+      - ${CONFIGS_DIR}/nextcloud/postgres:/var/lib/postgresql/data
+
+    networks:
+      - nextcloud-internal
+
+  nextcloud:
+    image: lscr.io/linuxserver/nextcloud:latest
+    container_name: nextcloud
+    restart: unless-stopped
+
+    depends_on:
+      - postgres
+      - collabora
+
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+
+    volumes:
+      - ${CONFIGS_DIR}/nextcloud/config:/config
+      - ${CONFIGS_DIR}/nextcloud/data:/data
+      - ${DATA_STORAGE}/data_storage_nextcloud:/drive
+
+    #ports:
+    #  - 30041:443
+
+    extra_hosts:
+      - ${SERVER_NAME_COLLABORA}:host-gateway
+
+    networks:
+      - docker-network
+      - nextcloud-internal
+
+  collabora:
+    image: collabora/code
+    container_name: collabora
+    restart: unless-stopped
+
+    depends_on:
+      - postgres
+
+    extra_hosts:
+      - ${SERVER_NAME_NEXTCLOUD}:host-gateway
+
+    #ports:
+    #  - 9980:9980
+
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - aliasgroup1=${ALIASGROUP1}
+      - server_name=${SERVER_NAME_COLLABORA}
+      - username=${USERNAME}
+      - password=${PASSWORD}
+      - extra_params=--o:ssl.enable=false --o:ssl.termination=true
+        --o:net.post_allow.host[0]=.*
+
+    volumes:
+      - ${CONFIGS_DIR}/collabora:/data
+
+    networks:
+      - docker-network
+      
+networks:
+  nextcloud-internal: null
+  docker-network:
+    external: true

@@ -1,0 +1,19 @@
+services:
+  jellyfin:
+    container_name: jellyfin
+    image: lscr.io/linuxserver/jellyfin:latest
+    restart: unless-stopped
+
+    volumes:
+      - ${CONFIGS_DIR}/jellyfin:/config
+      - ${MEDIA_DIR}:/media
+
+    devices:
+      - /dev/dri:/dev/dri
+
+    networks:
+      - docker-network 
+
+networks:
+  docker-network:
+    external: true
