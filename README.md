@@ -12,4 +12,4 @@ echo 'export SOPS_AGE_KEY_FILE=$HOME/.config/sops/age/keys.txt' >> ~/.bashrc
 source ~/.bashrc
 
 ### Read things, for example
-ops --input-type dotenv --output-type dotenv secrets/audiomuse.env.sops
+sops --input-type dotenv --output-type dotenv secrets/audiomuse.env.sops
