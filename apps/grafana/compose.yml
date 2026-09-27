@@ -1,0 +1,76 @@
+services:
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    user: 568:568
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ${CONFIGS_DIR}/grafana/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ${CONFIGS_DIR}/grafana/prometheus/data:/prometheus
+    #ports:
+    #  - 9090:9090
+    networks:
+      - monitoring
+  node_exporter:
+    image: prom/node-exporter:latest
+    container_name: node_exporter
+    restart: unless-stopped
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - --path.procfs=/host/proc
+      - --path.sysfs=/host/sys
+      - --path.rootfs=/rootfs
+    #expose:
+    #  - "9100"
+    networks:
+      - monitoring
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/loki.yml
+    user: 568:568
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    volumes:
+      - ${CONFIGS_DIR}/grafana/loki/loki.yml:/etc/loki/loki.yml:ro
+      - ${CONFIGS_DIR}/grafana/loki/data:/loki
+    #expose:
+    #  - "3100"
+    networks:
+      - monitoring
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    user: 568:568
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+    restart: unless-stopped
+    volumes:
+      - ${CONFIGS_DIR}/grafana/grafana/data:/var/lib/grafana
+    #ports:
+    #  - 32600:3000
+    networks:
+      - monitoring
+      - docker-network
+networks:
+  monitoring:
+    driver: bridge
+  docker-network:
+    external: true
+

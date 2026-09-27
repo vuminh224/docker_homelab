@@ -1,0 +1,18 @@
+services:
+  wireguard_vps:
+    image: lscr.io/linuxserver/wireguard:latest
+    container_name: wireguard_vps
+    restart: unless-stopped
+
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+
+    environment:
+      - TZ=${TZ}
+
+    volumes:
+      - ${CONFIGS_DIR}/wireguard_vps:/config
+      - /lib/modules:/lib/modules
+      
+    network_mode: host

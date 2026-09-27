@@ -1,0 +1,53 @@
+  services:
+    wireguard:
+      image: linuxserver/wireguard:latest
+      container_name: wireguard-vpn
+      cap_add:
+        - NET_ADMIN
+        - SYS_MODULE
+      environment:
+        #- PUID=${PUID}
+        #- PGID=${PGID}
+        - TZ=${TZ}
+      volumes:
+        - ${CONFIGS_DIR}/wireguard:/config
+        - /lib/modules:/lib/modules:ro
+      sysctls:
+        - net.ipv4.conf.all.src_valid_mark=1
+        - net.ipv6.conf.all.disable_ipv6=1
+      networks:
+        - docker-network
+      ports:
+        - 30042:30042 # qBittorrent WebUI
+      restart: unless-stopped
+      healthcheck:
+        test:
+          - CMD-SHELL
+          - ts=$$(wg show wg0 latest-handshakes 2>/dev/null | awk '{print $$2}')
+            && [ -n "$$ts" ] && [ "$$ts" -gt 0 ] && [ $$(( $$(date +%s) - $$ts ))
+            -lt 120 ]
+        interval: 15s
+        timeout: 5s
+        retries: 3
+        start_period: 40s
+    qbittorrent:
+      image: linuxserver/qbittorrent:latest
+      container_name: qbittorrent
+      network_mode: service:wireguard
+      environment:
+        - PUID=${PUID}
+        - PGID=${PGID}
+        - TZ=${TZ}
+        - WEBUI_PORT=30042
+      volumes:
+        - ${CONFIGS_DIR}/:/config
+        - ${MEDIA_DIR}:/media
+        - ${MEDIA_DIR}/Downloads/Qbittorent:/downloads
+      depends_on:
+        wireguard:
+          condition: service_healthy
+      restart: unless-stopped
+  networks:
+    docker-network:
+      external: true
+  
