@@ -13,3 +13,6 @@ source ~/.bashrc
 
 ### Read things, for example
 sops --input-type dotenv --output-type dotenv secrets/audiomuse.env.sops
+
+### Encryption: 
+sops -e --input-type dotenv --output-type dotenv secrets/grafana.env > secrets/grafana.env.sops
