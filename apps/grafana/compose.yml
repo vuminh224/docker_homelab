@@ -36,7 +36,7 @@ services:
     networks:
       - monitoring
   pve-exporter:
-    image: proveyourskill/prometheus-pve-exporter:latest
+    image: prompve/prometheus-pve-exporter:latest
     container_name: pve-exporter
     restart: unless-stopped
     environment:
