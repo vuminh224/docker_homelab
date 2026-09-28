@@ -1,5 +1,8 @@
 creation_rules:
   - path_regex: secrets/.*\.env(\.sops)?$
+    # Key 1: Runner publish
+    # Key 2: Backup
+    # Key 3: Linux HP Laptop
     age: >-
       age12clflz8mzdlyvd7p3rxgv8puq9m9s4tgrpn8960delup9mwnd50qy7j3hy,
       age16my6smtrmqmnumx9vd6ypsd5k7xvk8752uhxu5lsu58yjg5z75xs6c9pak,
