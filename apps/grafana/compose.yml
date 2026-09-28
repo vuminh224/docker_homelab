@@ -40,7 +40,8 @@ services:
     container_name: pve-exporter
     restart: unless-stopped
     environment:
-      - PVE_USER=root@pam!pve-exporter
+      - PVE_USER=root@pam
+      - PVE_TOKEN_NAME=pve-exporter
       - PVE_TOKEN_VALUE=${PVE_TOKEN_VALUE}
       - PVE_VERIFY_SSL=false
     networks:
