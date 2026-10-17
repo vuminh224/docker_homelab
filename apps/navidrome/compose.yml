@@ -18,7 +18,7 @@ services:
       ND_ENABLETRANSCODINGCONFIG: true
       ND_BACKUP_PATH: /backup
       ND_BACKUP_SCHEDULE: 0 0 * * *
-      ND_BACKUP_COUNT: 7
+      ND_BACKUP_COUNT: 2
       ND_PLUGINS_AUTORELOAD: true
       ND_AGENTS: audiomuseai,lastfm,deezer
       ND_DEVARTISTINFOTIMETOLIVE: 1s
@@ -26,6 +26,8 @@ services:
       ND_TAGS_LYRICIST_IGNORE: "true"
       ND_TAGS_PRODUCER_IGNORE: "true"
       ND_SCANSCHEDULE: 0
+      ND_IMAGECACHESIZE: 500MB
+      ND_TRANSCODINGCACHESIZE: 500MB
 
     networks:
       - docker-network
