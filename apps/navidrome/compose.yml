@@ -21,7 +21,6 @@ services:
       ND_BACKUP_COUNT: 2
       ND_PLUGINS_AUTORELOAD: true
       ND_AGENTS: audiomuseai,lastfm,deezer
-      ND_DEVARTISTINFOTIMETOLIVE: 1s
       ND_TAGS_COMPOSER_IGNORE: "true"
       ND_TAGS_LYRICIST_IGNORE: "true"
       ND_TAGS_PRODUCER_IGNORE: "true"
