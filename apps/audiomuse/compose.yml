@@ -3,7 +3,7 @@ services:
     image: postgres:16
     container_name: audiomuse-postgres
     restart: unless-stopped
-    user: ${PUID}:${PGID}
+    #user: ${PUID}:${PGID}
     
     ports:
       - 5432:5432
