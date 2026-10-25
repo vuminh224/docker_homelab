@@ -35,8 +35,8 @@
       container_name: qbittorrent
       network_mode: service:wireguard
       environment:
-        - PUID=1000
-        - PGID=1000
+        - PUID=${PUID}
+        - PGID=${PGID}
         - TZ=${TZ}
         - WEBUI_PORT=30042
       volumes:
