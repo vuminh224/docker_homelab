@@ -1,7 +1,7 @@
 services:
   searxng:
     image: searxng/searxng:latest
-    container_name: searxng-vpn
+    container_name: searxng
     network_mode: service:gluetun
     restart: unless-stopped
 
@@ -25,29 +25,7 @@ services:
       - DAC_OVERRIDE
 
     logging:
-      driver: "json-file"
+      driver: json-file
       options:
-        max-size: "1m"
+        max-size: 1m
         max-file: "1"
-
-  redis:
-    image: redis:alpine
-    container_name: searxng-redis
-    network_mode: service:gluetun
-    restart: unless-stopped
-    command: redis-server --save "" --appendonly "no"
-
-    tmpfs:
-      - /var/lib/redis
-
-    cap_drop:
-      - ALL
-
-    cap_add:
-      - SETGID
-      - SETUID
-      - DAC_OVERRIDE
-
-networks:
-  docker-network:
-    external: true
