@@ -2,12 +2,10 @@ services:
   searxng:
     image: searxng/searxng:latest
     container_name: searxng
-    network_mode: service:gluetun
     restart: unless-stopped
 
-    depends_on:
-      gluetun:
-        condition: service_healthy
+    networks:
+      - docker-network
 
     environment:
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL}
@@ -29,3 +27,28 @@ services:
       options:
         max-size: 1m
         max-file: "1"
+
+  redis:
+    image: redis:alpine
+    container_name: searxng-redis
+    restart: unless-stopped
+
+    networks:
+      - docker-network
+
+    command: redis-server --save "" --appendonly "no"
+
+    tmpfs:
+      - /var/lib/redis
+
+    cap_drop:
+      - ALL
+
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+
+networks:
+  docker-network:
+    external: true
