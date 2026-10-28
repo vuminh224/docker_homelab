@@ -35,10 +35,6 @@ services:
     container_name: searxng-redis
     network_mode: service:gluetun
     restart: unless-stopped
-
-    depends_on:
-      gluetun:
-        condition: service_healthy
     command: redis-server --save "" --appendonly "no"
 
     tmpfs:
