@@ -80,6 +80,16 @@ services:
     networks:
       - monitoring
       - docker-network
+  # Proxmox
+  influxdb:
+    image: influxdb:2
+    container_name: influxdb
+    volumes:
+      - ${CONFIGS_DIR}/influxdb/influxdb2/data:/var/lib/influxdb2
+    networks:
+      - monitoring
+      - docker-network
+      
 networks:
   monitoring:
     driver: bridge
