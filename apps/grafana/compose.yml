@@ -35,6 +35,8 @@ services:
     #  - "9100"
     networks:
       - monitoring
+
+  # Proxmox
   pve-exporter:
     image: prompve/prometheus-pve-exporter:latest
     container_name: pve-exporter
@@ -46,7 +48,19 @@ services:
       - PVE_VERIFY_SSL=false
     networks:
       - monitoring
-      
+      - docker-network
+
+  # TrueNAS
+  snmp-exporter:
+    image: prom/snmp-exporter:latest
+    container_name: snmp-exporter
+    restart: unless-stopped
+    #ports:
+    # - "9116:9116"
+    networks:
+      - monitoring
+      - docker-network 
+  
   loki:
     image: grafana/loki:latest
     container_name: loki
@@ -81,14 +95,7 @@ services:
       - monitoring
       - docker-network
   # Proxmox
-  influxdb:
-    image: influxdb:2
-    container_name: influxdb
-    volumes:
-      - ${CONFIGS_DIR}/influxdb/influxdb2/data:/var/lib/influxdb2
-    networks:
-      - monitoring
-      - docker-network
+
       
 networks:
   monitoring:
