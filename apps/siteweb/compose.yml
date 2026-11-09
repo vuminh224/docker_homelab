@@ -1,0 +1,14 @@
+services:
+  home:
+    image: git.mingkent.com/mingkent/home:latest
+    container_name: home
+    restart: unless-stopped
+    environment:
+      LASTFM_API_KEY: ${LASTFM_API_KEY}
+      LASTFM_USERNAME: ${LASTFM_USERNAME}
+    networks:
+      - docker-network 
+
+networks:
+  docker-network:
+    external: true

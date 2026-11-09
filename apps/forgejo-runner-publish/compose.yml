@@ -1,0 +1,44 @@
+services:
+  docker-in-docker:
+    image: docker:dind
+    container_name: publish_dind
+    privileged: true
+    restart: unless-stopped
+
+    command: ['dockerd', '-H', 'tcp://0.0.0.0:2375', '-H', 'unix:///var/run/docker.sock', '--dns=8.8.8.8']
+    
+    volumes:
+      - ${CONFIGS_DIR}/forgejo-runner-publisher/dind:/var/lib/docker
+      - dind-socket:/var/run
+
+    networks:
+      - docker-network
+      
+  publish-runner:
+    image: data.forgejo.org/forgejo/runner:13
+    container_name: publish_runner
+    user: "0:0"
+    restart: unless-stopped
+    dns:
+      - 8.8.8.8
+    depends_on:
+      - docker-in-docker
+
+    working_dir: /data
+    environment:
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    command: forgejo-runner daemon --config /data/runner-config.yml
+
+    volumes:
+      - ${CONFIGS_DIR}/forgejo-runner-publisher:/data
+      - dind-socket:/var/run
+
+    networks:
+      - docker-network
+
+volumes:
+  dind-socket:
+
+networks:
+  docker-network:
+    external: true

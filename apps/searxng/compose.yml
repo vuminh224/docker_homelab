@@ -4,8 +4,12 @@ services:
     container_name: searxng
     restart: unless-stopped
 
-    networks:
-      - docker-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
 
     environment:
       - SEARXNG_BASE_URL=${SEARXNG_BASE_URL}
@@ -13,6 +17,9 @@ services:
 
     volumes:
       - ${CONFIGS_DIR}/searxng:/etc/searxng:rw
+
+    networks:
+      - docker-network
 
     cap_drop:
       - ALL
@@ -32,6 +39,13 @@ services:
     image: redis:alpine
     container_name: searxng-redis
     restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
     networks:
       - docker-network

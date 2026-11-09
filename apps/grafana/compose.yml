@@ -3,15 +3,26 @@ services:
     image: prom/prometheus:latest
     container_name: prometheus
     restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
     user: 568:568
+
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
       - --storage.tsdb.retention.time=30d
+
     volumes:
       - ${CONFIGS_DIR}/grafana/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ${CONFIGS_DIR}/grafana/prometheus/data:/prometheus
@@ -19,20 +30,25 @@ services:
     #  - 9090:9090
     networks:
       - monitoring
+
   node_exporter:
     image: prom/node-exporter:latest
     container_name: node_exporter
     restart: unless-stopped
+
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
       - /:/rootfs:ro
+
     command:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
       - --path.rootfs=/rootfs
+
     #expose:
     #  - "9100"
+
     networks:
       - monitoring
 
@@ -41,11 +57,13 @@ services:
     image: prompve/prometheus-pve-exporter:latest
     container_name: pve-exporter
     restart: unless-stopped
+
     environment:
       - PVE_USER=root@pam
       - PVE_TOKEN_NAME=pve-exporter
       - PVE_TOKEN_VALUE=${PVE_TOKEN_VALUE}
       - PVE_VERIFY_SSL=false
+
     networks:
       - monitoring
       - docker-network
@@ -84,12 +102,16 @@ services:
     image: grafana/loki:latest
     container_name: loki
     restart: unless-stopped
+
     command: -config.file=/etc/loki/loki.yml
+
     user: 568:568
+
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
+
     volumes:
       - ${CONFIGS_DIR}/grafana/loki/loki.yml:/etc/loki/loki.yml:ro
       - ${CONFIGS_DIR}/grafana/loki/data:/loki
@@ -102,6 +124,7 @@ services:
     image: fviolence/docker-health-exporter:latest
     container_name: docker-health-exporter
     restart: unless-stopped
+
     environment:
       - PORT=9066
       - SCRAPE_INTERVAL=10
@@ -113,16 +136,28 @@ services:
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
     user: 568:568
+
     environment:
       - PUID=${PUID}
       - PGID=${PGID}
       - TZ=${TZ}
-    restart: unless-stopped
+
     volumes:
       - ${CONFIGS_DIR}/grafana/grafana/data:/var/lib/grafana
+
     #ports:
     #  - 32600:3000
+
     networks:
       - monitoring
       - docker-network
