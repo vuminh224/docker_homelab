@@ -51,16 +51,35 @@ services:
       - docker-network
 
   # TrueNAS
-  snmp-exporter:
-    image: prom/snmp-exporter:latest
-    container_name: snmp-exporter
+    truenas-exporter:
+    image: ghcr.io/unknowlars/truenas-scale-api-prometheus-exporter:latest
+    container_name: truenas-exporter
     restart: unless-stopped
+
     #ports:
-    # - "9116:9116"
-    networks:
+    #  - "9108:9108"
+
+    environment:
+      TRUENAS_WS_URL: ${TRUENAS_WS_URL}
+      TRUENAS_API_KEY: ${TRUENAS_API_KEY}
+      TRUENAS_VERIFY_TLS: "false"
+
+      EXPORTER_PORT: "9108"
+      SCRAPE_INTERVAL_SECONDS: "30"
+      TRUENAS_TIMEOUT_SECONDS: "20"
+      LOG_LEVEL: "INFO"
+
+      ENABLE_EVENT_STREAMS: "true"
+      ENABLE_DATASET_METRICS: "true"
+      ENABLE_TASK_METRICS: "true"
+      ENABLE_IPMI_METRICS: "false"
+      ENABLE_GENERIC_METHOD_METRICS: "false"
+      ENABLE_GENERIC_EVENT_METRICS: "false"
+
+    networks: 
       - monitoring
-      - docker-network 
-  
+      - docker-network
+
   loki:
     image: grafana/loki:latest
     container_name: loki
@@ -78,6 +97,7 @@ services:
     #  - "3100"
     networks:
       - monitoring
+
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
@@ -94,8 +114,6 @@ services:
     networks:
       - monitoring
       - docker-network
-  # Proxmox
-
       
 networks:
   monitoring:
