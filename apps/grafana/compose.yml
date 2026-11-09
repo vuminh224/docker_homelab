@@ -51,7 +51,7 @@ services:
       - docker-network
 
   # TrueNAS
-    truenas-exporter:
+  truenas-exporter:
     image: ghcr.io/unknowlars/truenas-scale-api-prometheus-exporter:latest
     container_name: truenas-exporter
     restart: unless-stopped
