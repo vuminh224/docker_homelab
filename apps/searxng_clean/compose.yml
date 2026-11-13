@@ -1,0 +1,68 @@
+services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    restart: unless-stopped
+
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+    environment:
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL}
+      - SEARXNG_SECRET=${SEARXNG_SECRET}
+
+    volumes:
+      - ${CONFIGS_DIR}/searxng:/etc/searxng:rw
+
+    networks:
+      - docker-network
+
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+
+    logging:
+      driver: json-file
+      options:
+        max-size: 1m
+        max-file: "1"
+
+  redis:
+    image: redis:alpine
+    container_name: searxng-redis
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    networks:
+      - docker-network
+
+    command: redis-server --save "" --appendonly "no"
+
+    tmpfs:
+      - /var/lib/redis
+
+    cap_drop:
+      - ALL
+
+    cap_add:
+      - SETGID
+      - SETUID
+      - DAC_OVERRIDE
+
+networks:
+  docker-network:
+    external: true

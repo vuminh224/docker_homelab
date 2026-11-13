@@ -20,7 +20,7 @@ services:
       - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
       - SERVER_COUNTRIES=${SERVER_COUNTRIES}
       - HTTPPROXY=on
-      - HTTPPROXY_LOG=on
+      #- HTTPPROXY_LOG=on
 
     volumes:
       - ${CONFIGS_DIR}/arr/gluetun_prowlarr:/gluetun

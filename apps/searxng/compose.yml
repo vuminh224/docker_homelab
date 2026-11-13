@@ -1,9 +1,38 @@
 services:
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: searxng-vpn
+    restart: unless-stopped
+
+    cap_add:
+      - NET_ADMIN
+
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+    environment:
+      - VPN_SERVICE_PROVIDER=${VPN_SERVICE_PROVIDER}
+      - VPN_TYPE=${VPN_TYPE}
+      - WIREGUARD_PRIVATE_KEY=${WIREGUARD_PRIVATE_KEY}
+      - SERVER_COUNTRIES=${SERVER_COUNTRIES}
+
+    networks: 
+      - docker-network
+
   searxng:
     image: searxng/searxng:latest
     container_name: searxng
+    network_mode: service:gluetun
     restart: unless-stopped
 
+    depends_on:
+      gluetun:
+        condition: service_healthy
+
+    environment:
+      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL}
+      - SEARXNG_SECRET=${SEARXNG_SECRET}
+    
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/healthz"]
       interval: 30s
@@ -11,15 +40,8 @@ services:
       retries: 3
       start_period: 60s
 
-    environment:
-      - SEARXNG_BASE_URL=${SEARXNG_BASE_URL}
-      - SEARXNG_SECRET=${SEARXNG_SECRET}
-
     volumes:
       - ${CONFIGS_DIR}/searxng:/etc/searxng:rw
-
-    networks:
-      - docker-network
 
     cap_drop:
       - ALL
@@ -38,18 +60,12 @@ services:
   redis:
     image: redis:alpine
     container_name: searxng-redis
+    network_mode: service:gluetun
     restart: unless-stopped
-    
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
 
-    networks:
-      - docker-network
-
+    depends_on:
+      gluetun:
+        condition: service_healthy
     command: redis-server --save "" --appendonly "no"
 
     tmpfs:
@@ -62,6 +78,13 @@ services:
       - SETGID
       - SETUID
       - DAC_OVERRIDE
+    
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 networks:
   docker-network:
