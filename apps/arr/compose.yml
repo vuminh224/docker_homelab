@@ -37,7 +37,8 @@ services:
     restart: unless-stopped
 
     depends_on:
-      - gluetun_prowlarr
+     gluetun_prowlarr:
+       condition: service_healthy
 
     environment:
       - PUID=${PUID}
