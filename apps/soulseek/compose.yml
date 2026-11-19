@@ -21,7 +21,7 @@ services:
       FIREWALL_VPN_INPUT_PORTS: ${FIREWALL_VPN_INPUT_PORTS}
 
     ports:
-      - 5030:5030 # slskd web‑UI
+      - 5030:5030 # slskd web UI
       - 5031:5031
       - ${FIREWALL_VPN_INPUT_PORTS}:${FIREWALL_VPN_INPUT_PORTS} # P2P port (UDP/TCP inside tunnel)
 
