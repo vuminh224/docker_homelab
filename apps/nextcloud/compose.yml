@@ -38,7 +38,7 @@ services:
 
     volumes:
       - ${CONFIGS_DIR}/nextcloud/config:/config
-      - #${CONFIGS_DIR}/nextcloud/data:/data
+      #- ${CONFIGS_DIR}/nextcloud/data:/data
       - ${DATA_STORAGE}/data_storage_nextcloud:/data
 
     #ports:
