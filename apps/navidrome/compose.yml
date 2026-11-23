@@ -42,7 +42,7 @@ services:
       - ${CONFIGS_DIR}/navidrome/backup:/backup
       - ${CONFIGS_DIR}/navidrome/data:/data
       - ${MEDIA_DIR}/Music/Hard Dance:/music:ro
-      #- /mnt/usb/[Audio-4U] J-CORE 14 (flac):/music2:ro
+      - /mnt/usb/[Audio-4U] J-CORE 14 (flac):/music2:ro
       - ${MEDIA_DIR}/Music/Other:/music3:ro
       - ${MEDIA_DIR}/Music/SpaceSpeakers:/music4:ro
       - ${MEDIA_DIR}/Music/Classical:/music5:ro
